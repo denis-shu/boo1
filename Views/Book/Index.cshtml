@@ -1,0 +1,247 @@
+﻿
+<div class="container">
+    <h2>Books</h2>
+    <table class="table table-bordered table-hover">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Genre</th>
+                <th>Numberofpage</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody class="tbody"></tbody>
+    </table>
+</div>
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="myModalLabel">Add Book</h4>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="form-group">
+                        <label for="Id">ID</label>
+                        <input type="text" class="form-control" id="Id" placeholder="Id" disabled="disabled" />
+                    </div>
+                    <div class="form-group">
+                        <label for="Name">Name</label>
+                        <input type="text" class="form-control" id="Name" placeholder="Name" />
+                    </div>
+                    <div class="form-group">
+                        <select name="dropGenre" id="dropGenre">
+                            <option value="none" selected="Selected">SelectType</option>
+                        </select>
+                      
+                    </div>
+                    <div class="form-group">
+                        <label for="">Numberofpage</label>
+                        <input type="text" class="form-control" id="Numberofpage" onkeypress="return isNumber(event);" placeholder="Numberofpage" />
+                    </div>
+                    <div class="form-group">
+
+                        <input type="text" class="form-control" style="display:none" id="AuthorId" placeholder="AuthorId" />
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary pull-right" data-toggle="modal" data-target="#myModal" id="btnAdd" onclick="Add();">Add Book</button>
+                <button type="button" class="btn btn-primary" id="btnUpdate" style="display:none;" onclick="Add();">Update</button>
+                <button type="button" id="cls" class="btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+<button type="button" class="btn pull-right btn-success">@Html.ActionLink("Authors", "Index", "Author")</button><br /><br />
+
+<script>
+    $(document).ready(function () {
+        var genres = {};
+        loadGenres();
+        loadData();
+
+    });
+
+    function loadGenres() {
+        $.ajax({
+            url: "/Book/Genres",
+            type: "GET",
+            contentType: "application/json;charset=utf-8",
+            dataType: "json",
+            success: function (data) {
+                genres = data;
+            }
+        });
+    }
+
+
+    function loadData() {
+
+        $.ajax({
+            url: "/Book/List",
+            type: "GET",
+            contentType: "application/json;charset=utf-8",
+            dataType: "json",
+            success: function (result) {
+                var html = '';
+                $.each(result, function (key, item) {
+                    html += '<tr>';
+                    html += '<td>' + item.Id + '</td>';
+                    html += '<td>' + item.Name + '</td>';
+                    html += '<td>' + item.Genre.Name + '</td>';
+                    html += '<td>' + item.NofP + '</td>';
+                    html += '<td style="display:none;">' + item.AuthorId + '</td>';
+                    html += '<td><button type="button" class="btn btn-info" onclick="return getbookId(' + item.Id + ')">Edit</button>  <button type="button" class="btn btn-danger" onclick="Delele(' + item.Id + ')">Delete</button></td>';
+                    html += '</tr>';
+                });
+                $('.tbody').html(html);
+            },
+            error: function (errormessage) {
+                alert(errormessage.responseText);
+            }
+        });
+    }
+
+
+    function getbookId(Id) {
+        $('#Name').css('border-color', 'lightgrey');
+        $('#Numberofpage').css('border-color', 'lightgrey');
+
+        $.ajax({
+            url: "/Book/GetbookId/" + Id,
+            type: "GET",
+            contentType: "application/json;charset=UTF-8",
+            dataType: "json",
+            success: function (result) {
+                $.each(genres, function (index, item) {
+                    $('#dropGenre').append(
+                    $('<option></option>').val(item.Name).html(item.Name));
+                });
+                $('#myModal').modal('show');
+                $('#Id').val(result.Id);
+                $('#Name').val(result.Name);
+                $('#Numberofpage').val(result.NofP);
+                $('#AuthorId').val(result.AuthorId);
+                $('#dropGenre').val(result.Genre.Name);
+                $('#btnUpdate').show();
+                $('#btnAdd').hide();
+                toastr.info("Done");
+            },
+            error: function (errormessage) {
+                alert(errormessage.responseText);
+            }
+        });
+        return false;
+    }
+
+
+    function Add() {
+        var res = validate();
+        if (res == false) {
+            return false;
+        }
+
+        var bookObj = {
+            Id: $('#Id').val(),
+            Name: $('#Name').val(),
+            Genre: { Name: $('#dropGenre option:selected').val() },
+            NofP: $('#Numberofpage').val(),
+            AuthorId: $('#AuthorId').val()
+        };
+        $.ajax({
+            url: "/Book/Add",
+            data: JSON.stringify(bookObj),
+            type: "POST",
+            contentType: "application/json;charset=utf-8",
+            dataType: "json",
+            success: function (result) {
+                loadData();
+                $('#myModal').modal('hide');
+                $('#dropGenre').empty();
+                toastr.success("Changes saved");
+            },
+            error: function (errormessage) {
+                alert(errormessage.responseText);
+            }
+        });
+    }
+
+    
+    function Delele(Id) {
+        bootbox.confirm("Are you sure you want to delete this book?", function (result) {
+            if (result) {
+                $.ajax({
+                    url: "/Book/Delete/" + Id,
+                    type: "POST",
+                    contentType: "application/json;charset=UTF-8",
+                    dataType: "json",
+                    success: function (result) {
+                        loadData();
+                        toastr.info("Book deleted");
+                    },
+                    error: function (errormessage) {
+                        alert(errormessage.responseText);
+                    }
+                });
+            }
+        });
+    }
+
+
+    function clearTextBox() {
+        $.each(genres, function (index, item) {
+            $('#dropGenre').append(
+            $('<option></option>').val(item.Name).html(item.Name));
+        });
+        $('#Id').val("");
+        $('#Name').val("");
+        $('#Numberofpage').val("");
+        $('#AuthorId').val("");
+        $('#btnUpdate').hide();
+        $('#btnAdd').show();
+        $('#Name').css('border-color', 'lightgrey');
+        $('#Numberofpage').css('border-color', 'lightblue');
+        $('#AuthorId').css('border-color', 'lightgrey');
+        $('#Genre').css('border-color', 'lightgrey');
+        toastr.success("Books");
+    }
+
+
+    function validate() {
+        var isValid = true;
+        if ($('#Name').val().trim() == "") {
+            $('#Name').css('border-color', 'Red');
+            isValid = false;
+        }
+        else {
+            $('#Name').css('border-color', 'lightgrey');
+        }
+        if (($('#Numberofpage').val().trim() == "")||($('#Numberofpage').val().length>3)) {
+            $('#Numberofpage').css('border-color', 'Red');
+            bootbox.alert("Check number of pages");
+            isValid = false;
+        }
+        else {
+            $('#Numberofpage').css('border-color', 'lightgrey');
+        }
+        if ($('#dropGenre').length==0) {
+            isValid = false;
+            $('#dropGenre').css('border-color', 'Red');
+        }
+        return isValid;
+    }
+
+
+    $('#cls').click(function () {
+        $('#dropGenre').empty();
+    });
+
+
+    function isNumber(e) {
+        e = e || window.event;
+        var charCode = e.which ? e.which : e.keyCode;
+        return /\d/.test(String.fromCharCode(charCode));
+    }
+</script>
